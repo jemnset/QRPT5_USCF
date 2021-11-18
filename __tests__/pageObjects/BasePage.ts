@@ -4,7 +4,7 @@ import {
     Capabilities,
     until,
     WebDriver,
-    WebElement,
+    WebElement
   } from "selenium-webdriver";
   const fs = require("fs");
   const chromedriver = require("chromedriver");
@@ -54,6 +54,16 @@ import {
     }
 
     /**
+     * waits for the identified elements to be located before returning an array of WebElements.
+     * @param {By} elementBy - the locator for the elements to return.
+     */
+     async getElements(elementBy: By): Promise<WebElement[]> {
+      await this.driver.wait(until.elementLocated(elementBy));
+      let elements = await this.driver.findElements(elementBy);
+      return elements;
+    }
+
+    /**
      * clicks the given element after waiting for it
      * @param {By} elementBy - the locator for the element to click
      */
@@ -61,6 +71,19 @@ import {
       let element = await this.getElement(elementBy);
       await this.driver.wait(until.elementIsEnabled(element));
       return await element.click();
+    }
+
+    /**
+     * simulates mouse hover over the given hoverElement and clicks the subsequent 
+     * clickElement that is revealed
+     * @param hoverElementBy {By} - the element to mouse hover over
+     * @param clickElementby {By} - the element to click which has now been revealed
+     * @returns 
+     */
+    async hoverAndClick(hoverElementBy: By, clickElementby: By): Promise<void>{
+      let element = await this.getElement(hoverElementBy);
+      await this.driver.actions({ bridge:true}).move({duration:1000,origin:element,x:0,y:0}).perform();
+      return await this.click(clickElementby);
     }
 
     /**
@@ -97,6 +120,30 @@ import {
     }
     
     /**
+     * selects a drop down list option from a list of options based on the text of that option
+     * @param {By} elementBy - the locator of the list of drop down list options
+     * @param textToSelect - the text of the option to select from the drop down list
+     */
+     async selectDDLByDisplayedText(elementBy: By, textToSelect: string): Promise<void>{
+      let options = await this.getElements(elementBy);
+      
+      for(let i=0; i<options.length; i++){
+          if(await options[i].getText() == textToSelect){
+              await options[i].click();
+              break;
+          }
+      }
+    }
+
+    /**
+     * gets the url of the current page
+     * @returns the url of the current page
+     */
+    async getCurrentPageURL(): Promise<string>{
+      return await this.driver.getCurrentUrl();
+    }
+    
+    /**
      * Will take a screenshot and save it to the filepath/filename provided.
      * Automatically saves as a .png file.
      * @param {string} filepath - the filepath relative to the project's base folder where you want the screenshot saved
@@ -115,5 +162,5 @@ import {
         }
       );
     }
-  }
+}
   
