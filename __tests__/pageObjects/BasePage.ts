@@ -10,6 +10,10 @@ import {
   const chromedriver = require("chromedriver");
   
   export class BasePage {
+
+    static KEY: number = 0;
+    static VALUE: number = 1;
+    
     driver: WebDriver;
     url: string;
     /**
@@ -40,6 +44,21 @@ import {
         return Promise.reject(
           "BasePage.navigate() needs a URL defined on the page object, or one passed in. No URL was provided."
         );
+    }
+
+    /**
+     * determines if an element exists by waiting for 5000 ms before timing out
+     * @param elementBy {By} - the element to find
+     * @returns true if the element is found before the time limit, false if otherwise
+     */
+    async hasElement(elementBy: By): Promise<boolean>{
+      let doesExist: boolean;
+
+      await this.driver.wait(until.elementLocated(elementBy), 5000)
+          .then(()=> { doesExist = true; })
+          .catch(()=> { doesExist = false; });
+    
+      return doesExist;
     }
 
     /**
@@ -136,13 +155,51 @@ import {
     }
 
     /**
+     * Retrieves the text from a pair of child elements from the parent element. The child elements are a key/value pair 
+     * For example:
+     * Parent: Player record
+     * Key: Member ID
+     * Value: Name
+     * @param parentElementBy {By} - The location of the parent element
+     * @param keyElementBy {By} - The relative path of the child element (from the parent element) which acts as the key of the key value pair
+     * @param valueElementBy {By} - The relative path of the child element (from the parent element) which acts as the value of the key value pair
+     * @returns A multidimensional array with the text of the key value elements
+     */
+    async getKeyValueTextFromElementList(parentElementBy: By, keyElementBy: By, valueElementBy: By): Promise<string[]>{
+      let result = [];
+      let parentElements = await this.getElements(parentElementBy);
+
+      let key: string = "";
+      let value: string = "";
+
+      for(let i=0; i<parentElements.length; i++){
+        key = await this.getChildElementTextFromParentElement(parentElements[i], keyElementBy);
+        value = await this.getChildElementTextFromParentElement(parentElements[i], valueElementBy);
+
+        await result.push([key, value]);
+      }
+
+      return result;
+    }
+
+    /**
+     * Retrieves the text from a child element relative to a parent element
+     * @param parentElement {WebElement} - parent element which contains the child element
+     * @param childElementBy {By} - the relative path to the child element (from the parent element)
+     * @returns the text from the child element
+     */
+    async getChildElementTextFromParentElement(parentElement: WebElement, childElementBy: By): Promise<string>{
+      return await parentElement.findElement(childElementBy).getText();
+    }
+
+    /**
      * gets the url of the current page
      * @returns the url of the current page
      */
-    async getCurrentPageURL(): Promise<string>{
-      return await this.driver.getCurrentUrl();
+         async getCurrentPageURL(): Promise<string>{
+          return await this.driver.getCurrentUrl();
     }
-    
+
     /**
      * Will take a screenshot and save it to the filepath/filename provided.
      * Automatically saves as a .png file.
