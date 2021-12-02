@@ -1,5 +1,6 @@
 import { By, WebDriver } from 'selenium-webdriver';
 import { BasePage } from "./BasePage";
+import { PlayerDetailsPage } from './PlayerDetailsPage';
 
 export class PlayerSearchPage extends BasePage{
     
@@ -96,24 +97,91 @@ export class PlayerSearchPage extends BasePage{
     async getSearchResults(playerDataBy: By): Promise<string[]>{
         let result = [];
 
-        //check that there are actually results
-        let playerRecordList = await this.getElements(this.playerRecord);
-        if(playerRecordList.length > 0) {
+        //check that there are actually results, if there are none, return an empty array and stop
+        if(await this.hasElement(this.playerRecord) == false)
+            return result;
 
-            //put the results into a string array
-            result = await this.getKeyValueTextFromElementList(this.playerRecord, this.playerName, playerDataBy);
+        //get the current page of results and put into a string array
+        result = await this.getKeyValueTextFromElementList(this.playerRecord, this.playerName, playerDataBy);
 
-            //check if there are more search results 
-            let hasMoreResults = await this.hasElement(this.resultNextBtn);
+        //check if there are more search results by checking if there is a "Next" button
+        let hasMoreResults = await this.hasElement(this.resultNextBtn);
 
-            while(hasMoreResults){
-                await this.click(this.resultNextBtn);
-                //get the new page of results and add to the results collected so far
-                result = result.concat(await this.getKeyValueTextFromElementList(this.playerRecord, this.playerName, playerDataBy));
-                hasMoreResults = await this.hasElement(this.resultNextBtn);
-            }
-        } 
+        while(hasMoreResults){
+            await this.click(this.resultNextBtn);
+            //get the new page of results and add to the results collected so far
+            result = result.concat(await this.getKeyValueTextFromElementList(this.playerRecord, this.playerName, playerDataBy));
+            hasMoreResults = await this.hasElement(this.resultNextBtn);
+        }
+        
 
         return result;
+    }
+
+    /**
+     * Retrieves an object which contains player name, member ID, location and rating based on the result of searching for a member ID
+     * @param memberID {string} - the player to retrieve a player record for
+     * @returns an object which contains player name, member ID, location and rating 
+     */
+    async getFullPlayerRecordByMemberID(memberID: string): Promise<{name: string, id: string, location: string, rating: number}> {
+        let player = {name: "", id: "", location: "", rating: -1};
+        
+        await this.setMemberIDInput(memberID);
+        await this.clickSubmitBtn();
+
+        //if there is no player displayed then return the empty player object and stop
+        if(await this.hasElement(this.playerRecord) == false)
+            return player;
+
+        let results = await this.getElements(this.playerRecord);
+
+        //if there is more than one record, return an empty player object and stop
+        if(results.length == 1){
+            player.name = await (await this.getChildElementTextFromParentElement(results[0], this.playerName)).toUpperCase();
+            player.id = await this.getChildElementTextFromParentElement(results[0], this.playerMemberID);
+            player.location = await (await this.getChildElementTextFromParentElement(results[0], this.playerLocation)).toUpperCase();
+            
+            let rating = await (await this.getChildElementTextFromParentElement(results[0], this.playerRegularRating)).trim();
+            
+            //rating can be blank or 0 which maps to "Unrated" on details page so set this to 0 to be consistent
+            if(rating == "")
+                player.rating = 0;
+            else{
+                try{
+                    player.rating = parseInt(rating);
+                }
+                catch(e){
+                    //If a non-number is retrieved this is unexpected so let the calling method handle this
+                    player.rating = -1;
+                }
+            }
+        }
+
+        return player;
+    }
+
+    /**
+     * click on the player name which will navigate to the player details page
+     * need to create the PlayerDetailsPage object and pass the current driver to ensure that multiple drivers
+     * are not being created and to ensure that the driver object can be closed properly
+     * @param memberID {string} - the ID of the player to be clicked on and details page to navigate to
+     * @returns an instance of the PlayerDetailsPage that uses the current driver
+     */
+    async clickPlayerNameByMemberID(memberID: string): Promise<PlayerDetailsPage>{
+        let results = await this.getElements(this.playerRecord);
+
+        if (results.length == 1){
+            let searchResultMemberID = await this.getChildElementTextFromParentElement(results[0], this.playerMemberID);
+
+            if(searchResultMemberID == memberID){
+                await this.clickChildElementFromParentElement(results[0], this.playerName);
+                await this.switchToNewTab();
+                return new PlayerDetailsPage(memberID, this.driver);
+            }
+        }
+
+        //if there are no results or more than one result or if the result 
+        //displayed does not match the member ID return null 
+        return null;
     }
 }

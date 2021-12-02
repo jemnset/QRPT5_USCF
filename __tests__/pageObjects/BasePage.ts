@@ -16,6 +16,7 @@ import {
     
     driver: WebDriver;
     url: string;
+
     /**
      *
      * @property {WebDriver} driver - if no driver is provided, one will be created
@@ -93,11 +94,19 @@ import {
     }
 
     /**
+     * clicks a child element based on it's relative path from a parent element
+     * @param parentElement {WebElement} - the parent element
+     * @param childElementBy {By} - relative path of the child element to the parent element
+     */
+     async clickChildElementFromParentElement(parentElement: WebElement, childElementBy: By): Promise<void>{
+      return await parentElement.findElement(childElementBy).click();
+    }
+
+    /**
      * simulates mouse hover over the given hoverElement and clicks the subsequent 
      * clickElement that is revealed
      * @param hoverElementBy {By} - the element to mouse hover over
      * @param clickElementby {By} - the element to click which has now been revealed
-     * @returns 
      */
     async hoverAndClick(hoverElementBy: By, clickElementby: By): Promise<void>{
       let element = await this.getElement(hoverElementBy);
@@ -148,8 +157,7 @@ import {
       
       for(let i=0; i<options.length; i++){
           if(await options[i].getText() == textToSelect){
-              await options[i].click();
-              break;
+              return await options[i].click();
           }
       }
     }
@@ -196,8 +204,33 @@ import {
      * gets the url of the current page
      * @returns the url of the current page
      */
-         async getCurrentPageURL(): Promise<string>{
-          return await this.driver.getCurrentUrl();
+    async getCurrentPageURL(): Promise<string>{
+      return await this.driver.getCurrentUrl();
+    }
+
+    /**
+     * switch to the newly opened tab
+     * assumes that the last tab is the newest tab
+     */
+    async switchToNewTab(): Promise<void>{
+      let windows = await this.driver.getAllWindowHandles();
+      return await this.driver.switchTo().window(windows[windows.length - 1]);
+    }
+
+    /**
+     * close all tabs excluding the first tab which is assumed to be the main tab
+     */
+    async switchToParentTabAndCloseAllChildTabs(): Promise<void>{
+      let windows = await this.driver.getAllWindowHandles();
+      
+      //close out any child tabs
+      for(let i=1; i<windows.length; i++){
+        await this.driver.switchTo().window(windows[i]);
+        this.driver.close();
+      }
+
+      //switch to main tab
+      return await this.driver.switchTo().window(windows[0]);
     }
 
     /**
