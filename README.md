@@ -93,5 +93,5 @@ The following tools and technologies were learned during the course and used for
 - JIRA was used to document the test plan, test cases and test summary report
 git and GitHub were used for source control with branching used for new functionality and pull requests opened to ensure code reviews could be completed before changes could be merged into the main code base
 - API testing was limited to GET HTTP requests of the Find a Doctor search function in Postman
-- The Page Object Model (POM) design strategy was used to model the Mayo Clinic web pages for testing
+- The Page Object Model (POM) design strategy was used to model the Chess.com web pages for testing
 
