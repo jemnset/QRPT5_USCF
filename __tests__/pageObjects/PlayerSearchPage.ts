@@ -1,4 +1,4 @@
-import { By, WebDriver } from 'selenium-webdriver';
+import { By, WebDriver, WebElementCondition } from 'selenium-webdriver';
 import { BasePage } from "./BasePage";
 import { PlayerDetailsPage } from './PlayerDetailsPage';
 
@@ -7,52 +7,67 @@ export class PlayerSearchPage extends BasePage{
     //locators
     
     //search filters
-    nameInput: By = By.id('edit-display-name');
-    locationDDL: By = By.xpath('//select[@id="edit-state-province-id"]/option');
-    memberIDInput: By = By.id('edit-member-id');
-    regularRatingMinInput: By = By.id('edit-rating-94-min');
-    regularRatingMaxInput: By = By.id('edit-rating-94-max');
+    firstNameInput: By = By.xpath('//label[normalize-space()="First Name"]/..//input[@type="text"]');
+    lastNameInput: By = By.xpath('//label[normalize-space()="Last Name"]/..//input[@type="text"]');
+    locationInput: By = By.xpath('//label[normalize-space()="State"]//following::input[1]');
+    locationDDL: By = By.xpath('//ul[@class="select2-results"]/li/div');
+    memberIDInput: By = By.xpath('//label[normalize-space()="Member ID"]//following::input[1]');
+    regularRatingInput: By = By.xpath('//label[normalize-space()="Player Details: Regular Rating"]/..//input[@type="number"]');
 
     //buttons
-    searchByRankingsLinkBtn: By = By.xpath('//summary[@role="button"]');
-    submitBtn: By = By.id('edit-submit');
-    resetBtn: By = By.id('edit-reset');
+    searchByRankingsLinkBtn: By = By.xpath('//legend[normalize-space()="Search by Rating"]');
+    submitBtn: By = By.xpath('//button[normalize-space()="Search"]');
 
     //search results
     playerRecord: By = By.xpath('//tbody/tr');
-    playerName: By = By.xpath('.//td[1]/a');
-    playerMemberID: By = By.xpath('.//td[2]');
-    playerRegularRating: By = By.xpath('.//td[3]');
-    playerLocation: By = By.xpath('.//td[10]');
+    playerName: By = By.xpath('//td[1]/..//a');
+    playerMemberID: By = By.xpath('//td[2]');
+    playerRegularRating: By = By.xpath('//td[3]');
+    playerLocation: By = By.xpath('//td[10]');
 
     //pagination
-    resultNextBtn: By = By.xpath('//li[@class="pager-item item-next"]/a');
+    resultNextBtn: By = By.xpath('//li[@class="pagination-next ng-scope"]//a');
+
+    //messages
+    noRecordsMessage: By = By.xpath('//p[normalize-space()="None Found"]');
 
     //constructor
     constructor(driver?: WebDriver){
-        super("https://new.uschess.org/player-search", driver);
+        super("https://new.uschess.org/civicrm/player-search", driver);
     }
 
     //methods to set input values for search terms
 
-    async setNameInput(name: string){
-        await this.setInput(this.nameInput, name);
+    async setFirstNameInput(name: string){
+        await this.setInput(this.firstNameInput, name);
     }
 
-    async selectLocationDDlByDisplayedText(optionToSelect: string){
-        await this.selectDDLByDisplayedText(this.locationDDL, optionToSelect);
+    async setLastNameInput(name: string){
+        await this.setInput(this.lastNameInput, name);
+    }
+
+    //location can be displayed by typing in textbox and selecting from DDL or by selecting directly from DDL
+
+    //location is an autocomplete drop down list so need to type the location in input box then select from drop down list
+    async setLocationInput(location: string){
+        await this.click(this.locationInput);
+        await this.setInput(this.locationInput, location);
+        await this.setLocationDDL(location);
+    }
+
+    async setLocationDDL(location: string){
+        //check to see if the drop down list is being displayed, if not click the autocomplete input box
+        if(await this.hasElement(this.locationDDL) == false)
+            await this.click(this.locationInput);
+        await this.selectDDLByDisplayedText(this.locationDDL, location);
     }
 
     async setMemberIDInput(memberID: string){
         await this.setInput(this.memberIDInput, memberID);
     }
 
-    async setRegularRatingMinInput(minRating: number){
-        await this.setInput(this.regularRatingMinInput, minRating);
-    }
-
-    async setRegularRatingMaxInput(maxRating: number){
-        await this.setInput(this.regularRatingMaxInput, maxRating);
+    async setRegularRatingInput(rating: number){
+        await this.setInput(this.regularRatingInput, rating);
     }
 
     //buttons
@@ -63,10 +78,6 @@ export class PlayerSearchPage extends BasePage{
 
     async clickSubmitBtn(){
         await this.click(this.submitBtn);
-    }
-
-    async clickResetBtn(){
-        await this.click(this.resetBtn);
     }
 
     //get search results
@@ -97,8 +108,11 @@ export class PlayerSearchPage extends BasePage{
     async getSearchResults(playerDataBy: By): Promise<string[]>{
         let result = [];
 
-        //check that there are actually results, if there are none, return an empty array and stop
-        if(await this.hasElement(this.playerRecord) == false)
+        //wait until the submit button has been re-enabled because it will show a fake table until records are retrieved
+        await this.isElementEnabled(this.submitBtn);
+
+        //check that there are records in the table itself, if none, return an empty array and stop
+        if(await this.hasElement(this.noRecordsMessage))
             return result;
 
         //get the current page of results and put into a string array
@@ -109,12 +123,14 @@ export class PlayerSearchPage extends BasePage{
 
         while(hasMoreResults){
             await this.click(this.resultNextBtn);
+            //wait until the submit button has been re-enabled because it will show a fake table until records are retrieved
+            await this.isElementEnabled(this.submitBtn);
+
             //get the new page of results and add to the results collected so far
             result = result.concat(await this.getKeyValueTextFromElementList(this.playerRecord, this.playerName, playerDataBy));
-            hasMoreResults = await this.hasElement(this.resultNextBtn);
+            hasMoreResults = await this.hasElement(this.resultNextBtn) && await this.isElementEnabled(this.resultNextBtn);
         }
         
-
         return result;
     }
 
@@ -129,8 +145,11 @@ export class PlayerSearchPage extends BasePage{
         await this.setMemberIDInput(memberID);
         await this.clickSubmitBtn();
 
-        //if there is no player displayed then return the empty player object and stop
-        if(await this.hasElement(this.playerRecord) == false)
+        //wait until the submit button has been re-enabled because it will show a fake table until records are retrieved
+        this.isElementEnabled(this.submitBtn);
+
+        //check that there are records in the table itself, if none, return an empty player object and stop
+        if(await this.hasElement(this.noRecordsMessage))
             return player;
 
         let results = await this.getElements(this.playerRecord);
@@ -168,6 +187,9 @@ export class PlayerSearchPage extends BasePage{
      * @returns an instance of the PlayerDetailsPage that uses the current driver
      */
     async clickPlayerNameByMemberID(memberID: string): Promise<PlayerDetailsPage>{
+        //wait until the submit button has been re-enabled because it will show a fake table until records are retrieved
+        await this.isElementEnabled(this.submitBtn);
+        
         let results = await this.getElements(this.playerRecord);
 
         if (results.length == 1){

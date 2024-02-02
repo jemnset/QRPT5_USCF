@@ -6,6 +6,7 @@ import {
     WebDriver,
     WebElement
   } from "selenium-webdriver";
+import { isElementAccessChain } from "typescript";
   const fs = require("fs");
   const chromedriver = require("chromedriver");
   
@@ -49,7 +50,7 @@ import {
 
     /**
      * determines if an element exists by waiting for 5000 ms before timing out
-     * @param elementBy {By} - the element to find
+     * @param {By} elementBy {By} - the element to find
      * @returns true if the element is found before the time limit, false if otherwise
      */
     async hasElement(elementBy: By): Promise<boolean>{
@@ -60,6 +61,22 @@ import {
           .catch(()=> { doesExist = false; });
     
       return doesExist;
+    }
+
+    /**
+     * determines if an element is enabled by waiting for 100000 ms before timing out
+     * @param {By} elementBy - the element to find
+     * @returns true if the element is enabled before the time limit, false if otherwise
+     */
+    async isElementEnabled(elementBy: By): Promise<boolean>{
+      let isEnabled: boolean;
+      let element = await this.getElement(elementBy);
+
+      await this.driver.wait(until.elementIsEnabled(element), 100000)
+        .then(() => {isEnabled = true;})
+        .catch(() => {isEnabled = false;})
+        
+      return isEnabled;
     }
 
     /**
@@ -154,11 +171,11 @@ import {
      */
      async selectDDLByDisplayedText(elementBy: By, textToSelect: string): Promise<void>{
       let options = await this.getElements(elementBy);
-      
+
       for(let i=0; i<options.length; i++){
-          if(await options[i].getText() == textToSelect){
-              return await options[i].click();
-          }
+        if(await options[i].getText() == textToSelect){
+          return await options[i].click();
+        }
       }
     }
 
@@ -175,12 +192,16 @@ import {
      */
     async getKeyValueTextFromElementList(parentElementBy: By, keyElementBy: By, valueElementBy: By): Promise<string[]>{
       let result = [];
+      
       let parentElements = await this.getElements(parentElementBy);
 
       let key: string = "";
       let value: string = "";
 
+      //console.log(parentElements.length);
+
       for(let i=0; i<parentElements.length; i++){
+
         key = await this.getChildElementTextFromParentElement(parentElements[i], keyElementBy);
         value = await this.getChildElementTextFromParentElement(parentElements[i], valueElementBy);
 
