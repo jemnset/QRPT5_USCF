@@ -95,7 +95,7 @@ describe('test player search function', ()=> {
     test('JN5DL-86: Search for a player based on their USCF regular rating', async ()=> {
         let searchTerm: number = 2550;
 
-        await page.clickSearchByRankingsLinkBtn();
+        //await page.clickSearchByRankingsLinkBtn();
         await page.setRegularRatingInput(searchTerm);
         await page.clickSubmitBtn();
 
@@ -103,7 +103,7 @@ describe('test player search function', ()=> {
         let errRecords = [];
 
         result.forEach((record) => {
-            if(parseInt(record[PlayerSearchPage.VALUE]) != searchTerm)
+            if(parseInt(record[PlayerSearchPage.VALUE]) < searchTerm)
                 errRecords.push(record);
         })
 

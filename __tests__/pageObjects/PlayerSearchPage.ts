@@ -12,7 +12,7 @@ export class PlayerSearchPage extends BasePage{
     locationInput: By = By.xpath('//label[normalize-space()="State"]//following::input[1]');
     locationDDL: By = By.xpath('//ul[@class="select2-results"]/li/div');
     memberIDInput: By = By.xpath('//label[normalize-space()="Member ID"]//following::input[1]');
-    regularRatingInput: By = By.xpath('//label[normalize-space()="Player Details: Regular Rating"]/..//input[@type="number"]');
+    regularRatingInput: By = By.xpath('//label[normalize-space()="Player Details: Regular Rating"]/..//input[@type="number"][1]');
 
     //buttons
     searchByRankingsLinkBtn: By = By.xpath('//legend[normalize-space()="Search by Rating"]');
